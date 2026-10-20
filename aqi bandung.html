@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>WBGT & AQI Lari Bandung</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<style>
+:root{--bg:#f6f7f4;--card:#fff;--tx:#1d2420;--mut:#66706a;--bd:#dde1db;--ac:#1f7a5a}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a17;--card:#1d2521;--tx:#e8ede9;--mut:#9aa69f;--bd:#33403a;--ac:#4cc592}}
+:root[data-theme="dark"]{--bg:#141a17;--card:#1d2521;--tx:#e8ede9;--mut:#9aa69f;--bd:#33403a;--ac:#4cc592}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.w{max-width:1280px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 14px 28px}
+h1{font-size:1.45rem;margin:0 0 4px}.sub{color:var(--mut);margin:0 0 12px}
+.src{display:inline-block;font-size:.78rem;border:1px solid var(--bd);border-radius:999px;padding:2px 10px;margin-bottom:12px;background:var(--card);color:var(--mut)}
+.src.live{color:var(--ac);border-color:var(--ac)}
+.ctl{display:flex;flex-wrap:wrap;gap:12px;align-items:end;background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:14px}
+.ctl label{display:flex;flex-direction:column;font-size:.8rem;color:var(--mut);gap:4px}
+.ctl select,.ctl input,.ctl button{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px;padding:6px 8px}
+.ctl select:disabled{opacity:.55}
+.ctl button{cursor:pointer}.ctl button:hover{border-color:var(--ac)}
+.ctl input[type=range]{padding:0;width:220px;max-width:100%}.hr{font-weight:700;color:var(--tx);font-size:1rem}
+.g{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:14px}
+@media(max-width:900px){.g{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px}
+#map{height:620px;border-radius:12px;border:1px solid var(--bd);background:#cfe3f0;z-index:0}
+@media(max-width:900px){#map{height:480px}}
+.m{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.b{border:1px solid var(--bd);border-radius:10px;padding:10px}.b small{color:var(--mut);display:block}.b strong{font-size:1.5rem}
+.tag{display:inline-block;color:#fff;border-radius:999px;padding:1px 9px;font-size:.78rem;font-weight:600}
+.v{border-left:5px solid;padding:8px 12px;border-radius:6px;background:var(--bg);margin:10px 0}
+.rk{list-style:none;margin:8px 0 0;padding:0;max-height:260px;overflow:auto}
+.rk li{display:flex;justify-content:space-between;gap:8px;padding:7px 6px;border-bottom:1px solid var(--bd);cursor:pointer;border-radius:6px}
+.rk li:hover,.rk li.on{background:var(--bg)}.rk span{font-size:.8rem;color:var(--mut)}
+h2{font-size:1rem;margin:0 0 4px}.note{font-size:.78rem;color:var(--mut);margin-top:14px}
+.sc{overflow-x:auto}.kk{color:var(--mut);font-size:.82rem;margin:0 0 6px}
+.leaflet-container{font:inherit}
+.lbl{font-weight:600;padding:1px 6px}
+/* toolbar tampilan di dalam peta */
+.vw{position:absolute;top:10px;left:56px;z-index:1000;display:flex;flex-wrap:wrap;gap:4px;background:rgba(255,255,255,.95);border-radius:8px;padding:6px 8px;box-shadow:0 1px 5px rgba(0,0,0,.4);max-width:calc(100% - 230px);align-items:center;color:#1d2420}
+.vw b{font-size:.82rem;margin-right:2px}
+.vw button{font:inherit;font-size:.82rem;color:#1d2420;background:#f3f3f3;border:1px solid #bbb;border-radius:5px;padding:3px 9px;cursor:pointer}
+.vw button.on{background:#1f7a5a;border-color:#1f7a5a;color:#fff}
+.lg{background:rgba(255,255,255,.96);border-radius:8px;padding:8px 12px;box-shadow:0 1px 5px rgba(0,0,0,.4);font-size:.78rem;line-height:1.55;color:#1d2420;max-width:240px}
+.lg h4{margin:0 0 4px;font-size:.8rem}.lg i{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:6px;vertical-align:-2px}
+.lg .s{color:#555;font-size:.7rem;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="w">
+<h1>🏃 Bandung Run Check</h1>
+<div class="src" id="src">Memuat data prakiraan…</div>
+
+<div class="ctl">
+<label>Hari<select id="dy"><option value="0">Hari ini</option><option value="1">Besok</option></select></label>
+<label>Jam (WIB) <span class="hr" id="hv">06:00</span><input type="range" id="hr" min="4" max="21" value="6"></label>
+<label>Kondisi cuaca<select id="sc"><option value="1">Cerah</option><option value="0.5" selected>Berawan</option><option value="0.15">Hujan/mendung tebal</option></select></label>
+<label>Intensitas lari<select id="it"><option value="0">Santai</option><option value="1.5" selected>Sedang</option><option value="3">Intens/race</option></select></label>
+<button id="nb" type="button">📍 Titik terdekat dari saya</button>
+</div>
+
+<div class="g">
+<div><div id="map"></div></div>
+<div>
+<div class="card" id="det"></div>
+<div class="card" style="margin-top:14px"><h2>Peringkat titik lari pada jam ini</h2><ul class="rk" id="rk"></ul></div>
+</div>
+</div>
+<div class="card" style="margin-top:14px"><h2>Status titik terpilih sepanjang hari</h2><p class="kk">Angka di bawah batang = WBGT (°C). Batang berkontur = jam yang dipilih.</p><div class="sc" id="ch"></div></div>
+
+<p class="note"><b>Catatan:</b> Peta dasar dan lapisan referensi berasal dari Esri (Citra, Topografi, Abu-abu; ganti lewat kontrol lapisan di kanan atas peta). Bila tersedia, suhu, kelembapan, radiasi matahari, dan PM2.5 diambil dari prakiraan Open-Meteo untuk tiap koordinat. Bila gagal dimuat, halaman memakai <b>estimasi model sederhana</b> pola harian Bandung dan hal ini ditandai di atas. WBGT dihitung dengan pendekatan luar ruang 0,7·Tw + 0,2·Tg + 0,1·Ta (Tw formula Stull; Tg diperkirakan dari radiasi matahari). AQI dihitung dari PM2.5 dengan breakpoint US EPA. Intensitas lari menggeser ambang WBGT (lebih ketat untuk lari intens). Koordinat, ketinggian, dan karakter tiap titik adalah perkiraan. Untuk keputusan penting, cek BMKG dan sumber AQI resmi.</p>
+</div>
+
+<script>
+var SPOTS=[
+{n:"Lapangan Gasibu",a:-6.9007,o:107.6188,alt:715,u:.9,p:30,k:"Lapangan kota"},
+{n:"Taman Lansia",a:-6.9072,o:107.6212,alt:710,u:.4,p:26,k:"Taman kota"},
+{n:"Lapangan Saparua",a:-6.9137,o:107.6209,alt:700,u:1,p:32,k:"Lapangan olahraga"},
+{n:"Taman Cibeunying",a:-6.9040,o:107.6293,alt:705,u:.4,p:27,k:"Taman kota"},
+{n:"Kampus ITB",a:-6.8915,o:107.6107,alt:770,u:.2,p:22,k:"Kampus, jalur teduh"},
+{n:"Tahura Ir. H. Djuanda",a:-6.8568,o:107.6325,alt:900,u:-.9,p:13,k:"Hutan kota (dataran lebih tinggi)"},
+{n:"Alun-alun Bandung",a:-6.9219,o:107.6071,alt:690,u:1.2,p:36,k:"Pusat kota"},
+{n:"Lapangan Tegallega",a:-6.9375,o:107.6078,alt:675,u:1,p:33,k:"Lapangan kota"},
+{n:"Gedebage (GBLA)",a:-6.9506,o:107.6717,alt:670,u:1.1,p:25,k:"Kawasan stadion"}
+];
+var COL=["#2e9e5b","#d9b300","#f08a24","#d6403a","#8a3fb5"],LB=["Aman","Waspada ringan","Batasi","Hindari","Berbahaya"];
+var WL=["Rendah","Sedang","Tinggi","Sangat tinggi","Ekstrem"],AL=["Baik","Sedang","Tidak sehat bagi sensitif","Tidak sehat","Sangat tidak sehat"];
+var WR=["< 21 °C","21–25 °C","25–28 °C","28–30 °C","≥ 30 °C"],AR=["0–50","51–100","101–150","151–200","> 200"];
+var E=function(i){return document.getElementById(i)};
+var WX=null,AX=null,sel=0,mk=[],halo=[],me=null,view="all",LR=null;
+
+function Tw(T,R){return T*Math.atan(.151977*Math.sqrt(R+8.313659))+Math.atan(T+R)-Math.atan(R-1.676331)+.00391838*Math.pow(R,1.5)*Math.atan(.023101*R)-4.686035}
+function aqiOf(c){var B=[[0,9,0,50],[9.1,35.4,51,100],[35.5,55.4,101,150],[55.5,125.4,151,200],[125.5,225.4,201,300]];c=Math.round(c*10)/10;for(var i=0;i<B.length;i++){var b=B[i];if(c<=b[1])return Math.round((b[3]-b[2])/(b[1]-b[0])*(c-b[0])+b[2])}return 301}
+function es(t){return Math.exp(17.625*t/(243.04+t))}
+
+/* ---- model simulasi (fallback) ---- */
+function simW(l,h,sc){
+var ta=23.2+5.5*Math.sin(2*Math.PI*(h-9.5)/24)-.0065*(l.alt-700)+l.u*.6-(sc<1?(sc<.3?3:1):0);
+var td=18.8-.0065*(l.alt-700)+(sc<.3?1.5:0);
+var rh=Math.min(100,Math.max(25,100*es(td)/es(ta)));
+var rad=Math.max(0,Math.sin(Math.PI*(h-6)/12))*900*sc;
+return{ta:ta,rh:rh,rad:rad}}
+function simP(l,h,sc){
+var f=1+.35*Math.exp(-Math.pow(h-7,2)/8)+.3*Math.exp(-Math.pow(h-20,2)/8)-.2*Math.exp(-Math.pow(h-14,2)/18);
+return l.p*f*(sc<.3?.6:1)}
+function ev(ta,rh,rad,pm,sh){
+var tg=ta+Math.min(14,rad/75),wb=.7*Tw(ta,rh)+.2*tg+.1*ta,adj=wb+sh;
+var wl=adj<21?0:adj<25?1:adj<28?2:adj<30?3:4;
+var aq=aqiOf(pm),al=aq<=50?0:aq<=100?1:aq<=150?2:aq<=200?3:4;
+return{ta:ta,rh:rh,wb:wb,wl:wl,pm:pm,aq:aq,al:al,lv:Math.max(wl,al)}}
+function st(){return{d:+E("dy").value,h:+E("hr").value,sc:+E("sc").value,sh:+E("it").value}}
+function get(i,h,s){
+var l=SPOTS[i],d=s.d*24+h,ta,rh,rad,pm;
+if(WX&&WX[i]&&WX[i].t[d]!=null&&WX[i].h[d]!=null){ta=WX[i].t[d];rh=WX[i].h[d];rad=WX[i].r[d]||0}
+else{var m=simW(l,h,s.sc);ta=m.ta;rh=m.rh;rad=m.rad}
+if(AX&&AX[i]&&AX[i][d]!=null)pm=AX[i][d];else pm=simP(l,h,s.sc);
+return ev(ta,rh,rad,pm,s.sh)}
+function lvOf(r){return view=="wbgt"?r.wl:view=="aqi"?r.al:r.lv}
+
+/* ---- peta Leaflet + data Esri ---- */
+var map=L.map("map",{center:[-6.9,107.62],zoom:12,minZoom:9,maxZoom:19});
+var ES="https://server.arcgisonline.com/ArcGIS/rest/services/";
+var EA="Tiles &copy; Esri";
+function esri(p,o){return L.tileLayer(ES+p+"/MapServer/tile/{z}/{y}/{x}",o)}
+var bCitra=esri("World_Imagery",{maxNativeZoom:19,maxZoom:19,attribution:EA+" — Esri, Maxar, Earthstar Geographics, GIS User Community"});
+var bTopo=esri("World_Topo_Map",{maxNativeZoom:19,maxZoom:19,attribution:EA+" — Esri, HERE, Garmin, USGS, OpenStreetMap contributors"});
+var bGray=esri("Canvas/World_Light_Gray_Base",{maxNativeZoom:16,maxZoom:19,attribution:EA+" — Esri, HERE, Garmin"});
+var bCarto=L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",{subdomains:"abcd",maxZoom:19,attribution:"&copy; OpenStreetMap contributors &copy; CARTO"});
+var bOsm=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"&copy; OpenStreetMap contributors"});
+var bases=[bCitra,bTopo,bGray,bCarto,bOsm];
+var oRoad=esri("Reference/World_Transportation",{maxNativeZoom:19,maxZoom:19,zIndex:5,attribution:EA});
+var oPlace=esri("Reference/World_Boundaries_and_Places",{maxNativeZoom:19,maxZoom:19,zIndex:6,attribution:EA});
+var gSpot=L.layerGroup(),gHalo=L.layerGroup();
+
+var offl=new (L.GridLayer.extend({createTile:function(c){
+var t=document.createElement("canvas"),s=this.getTileSize();t.width=s.x;t.height=s.y;
+var x=t.getContext("2d");x.fillStyle="#eef3ee";x.fillRect(0,0,s.x,s.y);
+x.strokeStyle="#c3d0c5";x.lineWidth=1;x.strokeRect(.5,.5,s.x-1,s.y-1);
+var p=this._map.unproject(L.point(c.x*s.x,c.y*s.y),c.z);
+x.fillStyle="#7d8b80";x.font="10px sans-serif";
+x.fillText(p.lat.toFixed(3)+", "+p.lng.toFixed(3),4,12);return t}}))({maxZoom:19,attribution:"Kisi koordinat (offline)"});
+
+var ci=0,tok=0,ter=0,tfail=false;
+bCitra.addTo(map);oRoad.addTo(map);oPlace.addTo(map);gHalo.addTo(map);gSpot.addTo(map);
+var lc=L.control.layers(
+{"Esri Abu-abu":bGray,"Esri Topografi":bTopo,"Esri Citra":bCitra,"CARTO Voyager":bCarto,"OpenStreetMap":bOsm},
+{"Jalan &amp; transportasi (Esri)":oRoad,"Nama tempat (Esri)":oPlace,"Area sekitar titik (500 m)":gHalo,"Titik lari":gSpot},
+{collapsed:window.innerWidth<700}).addTo(map);
+map.on("baselayerchange",function(e){ci=bases.indexOf(e.layer);tok=0;ter=0});
+bases.forEach(function(b){
+b.on("tileload",function(){if(b===bases[ci])tok++});
+b.on("tileerror",function(){
+if(b!==bases[ci]||tok||tfail)return;
+ter++;if(ter<4)return;
+if(ci<bases.length-1){map.removeLayer(bases[ci]);ci++;tok=0;ter=0;bases[ci].addTo(map)}
+else{tfail=true;offl.addTo(map);E("src").textContent+=" · Tile peta diblokir; memakai peta dasar kisi (offline)."}
+})});
+L.control.scale({imperial:false,position:"bottomleft"}).addTo(map);
+
+mk=SPOTS.map(function(l,i){
+var m=L.circleMarker([l.a,l.o],{radius:12,weight:3,color:"#fff",fillOpacity:.95}).addTo(gSpot);
+m.on("click",function(){sel=i;draw()});
+var h=L.circle([l.a,l.o],{radius:500,weight:1,color:"#fff",opacity:.8,fillOpacity:.22,interactive:false}).addTo(gHalo);
+halo.push(h);return m});
+map.fitBounds(L.latLngBounds(SPOTS.map(function(l){return[l.a,l.o]})),{padding:[30,30]});
+
+/* toolbar tampilan (di dalam peta) */
+var vw=document.createElement("div");vw.className="vw";
+vw.innerHTML='<b>Tampilan:</b><button data-v="all" class="on">Status gabungan</button><button data-v="wbgt">WBGT</button><button data-v="aqi">AQI</button>';
+map.getContainer().appendChild(vw);L.DomEvent.disableClickPropagation(vw);
+vw.addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;view=b.dataset.v;
+[].forEach.call(vw.querySelectorAll("button"),function(x){x.classList.toggle("on",x===b)});draw()});
+
+/* legenda (di dalam peta) */
+var lg=L.control({position:"bottomright"});
+lg.onAdd=function(){this._d=L.DomUtil.create("div","lg");return this._d};
+lg.addTo(map);
+function legend(){
+var T=view=="wbgt"?"Legenda WBGT":view=="aqi"?"Legenda AQI (PM2.5)":"Legenda status gabungan",
+N=view=="wbgt"?WL:view=="aqi"?AL:LB,Rg=view=="wbgt"?WR:view=="aqi"?AR:null,h="<h4>"+T+"</h4>";
+for(var i=0;i<5;i++)h+='<div><i style="background:'+COL[i]+'"></i>'+N[i]+(Rg?" <span style='color:#666'>("+Rg[i]+")</span>":"")+'</div>';
+h+='<div class="s">'+(view=="wbgt"?"Ambang untuk lari santai; makin intens makin ketat.":view=="aqi"?"Skala US EPA dari PM2.5.":"Nilai terburuk antara WBGT dan AQI.")+'</div>';
+lg._d.innerHTML=h}
+
+/* label: hover saat zoom jauh, permanen saat zoom dekat */
+var lmode=null;
+function tip(i){var r=LR&&LR[i];return "<b>"+SPOTS[i].n+"</b>"+(r?"<br>WBGT "+r.wb.toFixed(1)+" · AQI "+r.aq:"")}
+function lbl(){var near=map.getZoom()>=14;if(near===lmode)return;lmode=near;
+mk.forEach(function(m,i){m.unbindTooltip();
+m.bindTooltip(tip(i),near?{permanent:true,direction:i%2?"left":"right",offset:[i%2?-12:12,0],className:"lbl"}:{direction:"top",offset:[0,-12],className:"lbl"})})}
+map.on("zoomend",lbl);
+
+function tag(t,c){return '<span class="tag" style="background:'+COL[c]+'">'+t+'</span>'}
+function hh(h){return("0"+h).slice(-2)+":00"}
+function advice(r){
+var t=[];
+if(r.lv==0)t.push("Kondisi baik untuk lari. Tetap bawa air minum.");
+else if(r.lv==1)t.push("Masih layak untuk lari, kurangi tempo bila terasa berat dan perbanyak minum.");
+else if(r.lv==2)t.push("Batasi durasi dan intensitas; pilih rute teduh atau jam lain.");
+else t.push("Hindari lari di luar ruang; geser jadwal atau latihan indoor.");
+if(r.al>=2)t.push("AQI tinggi: pertimbangkan masker atau lokasi lebih hijau seperti Tahura Ir. H. Djuanda.");
+if(r.wl>=2)t.push("Risiko panas meningkat: lari lebih pagi atau sore.");
+return t.join(" ")}
+
+function draw(){
+var s=st();E("hv").textContent=hh(s.h);
+var rs=SPOTS.map(function(_,i){return get(i,s.h,s)});LR=rs;
+mk.forEach(function(m,i){var c=COL[lvOf(rs[i])];
+m.setStyle({fillColor:c,weight:i==sel?5:3,color:i==sel?"#111":"#fff"});if(i==sel)m.bringToFront();
+halo[i].setStyle({fillColor:c});
+if(m.getTooltip())m.setTooltipContent(tip(i))});
+var r=rs[sel],l=SPOTS[sel];
+var hs=[];for(var h=4;h<=21;h++)hs.push({h:h,q:get(sel,h,s)});
+var best=hs.slice().sort(function(a,b){return a.q.lv-b.q.lv||(a.q.wb/4+a.q.aq/50)-(b.q.wb/4+b.q.aq/50)}).slice(0,3).map(function(x){return hh(x.h)});
+E("det").innerHTML='<h2>'+l.n+'</h2><div class="kk">'+l.k+' · ±'+l.alt+' m dpl</div>'+
+'<div class="v" style="border-color:'+COL[r.lv]+'"><b>'+tag(LB[r.lv],r.lv)+'</b> '+advice(r)+'</div>'+
+'<div class="m"><div class="b"><small>WBGT (°C)</small><strong>'+r.wb.toFixed(1)+'</strong><br>'+tag(WL[r.wl],r.wl)+'<small>Suhu '+r.ta.toFixed(1)+'°C · RH '+Math.round(r.rh)+'%</small></div>'+
+'<div class="b"><small>AQI (PM2.5)</small><strong>'+r.aq+'</strong><br>'+tag(AL[r.al],r.al)+'<small>PM2.5 '+r.pm.toFixed(1)+' µg/m³</small></div></div>'+
+'<p style="margin:6px 0 0"><b>Jam terbaik di titik ini:</b> '+best.join(", ")+'</p>';
+var W=34,svg='<svg width="'+(hs.length*W+10)+'" height="140" role="img" aria-label="Status per jam">';
+hs.forEach(function(x,i){var bh=30+x.q.lv*20;
+svg+='<rect x="'+(i*W+5)+'" y="'+(100-bh)+'" width="'+(W-6)+'" height="'+bh+'" rx="4" fill="'+COL[x.q.lv]+'"'+(x.h==s.h?' stroke="currentColor" stroke-width="3"':' opacity=".85"')+'><title>'+hh(x.h)+' · WBGT '+x.q.wb.toFixed(1)+' · AQI '+x.q.aq+'</title></rect>'+
+'<text x="'+(i*W+5+(W-6)/2)+'" y="118" text-anchor="middle" font-size="10" fill="currentColor">'+x.h+'</text>'+
+'<text x="'+(i*W+5+(W-6)/2)+'" y="132" text-anchor="middle" font-size="9" fill="currentColor" opacity=".7">'+Math.round(x.q.wb)+'°</text>'});
+E("ch").innerHTML=svg+'</svg>';
+var ord=SPOTS.map(function(_,i){return i}).sort(function(a,b){return lvOf(rs[a])-lvOf(rs[b])||rs[a].aq-rs[b].aq});
+E("rk").innerHTML=ord.map(function(i){return '<li class="'+(i==sel?"on":"")+'" data-i="'+i+'"><div>'+tag("&nbsp;",lvOf(rs[i]))+' '+SPOTS[i].n+'</div><span>WBGT '+rs[i].wb.toFixed(1)+' · AQI '+rs[i].aq+'</span></li>'}).join("");
+legend();lbl()}
+
+E("rk").addEventListener("click",function(e){var li=e.target.closest("li");if(li){sel=+li.dataset.i;map.setView([SPOTS[sel].a,SPOTS[sel].o],Math.max(map.getZoom(),14));draw()}});
+["hr","sc","it","dy"].forEach(function(i){E(i).addEventListener("input",draw)});
+
+E("nb").addEventListener("click",function(){
+if(!navigator.geolocation){alert("Peramban tidak mendukung geolokasi.");return}
+navigator.geolocation.getCurrentPosition(function(p){
+var la=p.coords.latitude,lo=p.coords.longitude,bi=0,bd=1e9;
+SPOTS.forEach(function(l,i){var dx=(l.o-lo)*Math.cos(la*Math.PI/180),dy=l.a-la,d=Math.sqrt(dx*dx+dy*dy)*111;if(d<bd){bd=d;bi=i}});
+if(me)map.removeLayer(me);
+me=L.circleMarker([la,lo],{radius:6,color:"#1565c0",fillColor:"#2196f3",fillOpacity:1,weight:2}).addTo(map).bindTooltip("Lokasi Anda");
+sel=bi;map.fitBounds(L.latLngBounds([[la,lo],[SPOTS[bi].a,SPOTS[bi].o]]),{padding:[50,50],maxZoom:15});draw();
+},function(){alert("Lokasi tidak dapat diakses. Izinkan akses lokasi di peramban, atau pilih titik langsung di peta.")},{timeout:8000})});
+
+/* ---- data live Open-Meteo (dengan fallback ke simulasi) ---- */
+function jf(u){var c=new AbortController(),t=setTimeout(function(){c.abort()},8000);
+return fetch(u,{signal:c.signal}).then(function(r){clearTimeout(t);if(!r.ok)throw new Error("http");return r.json()})}
+function arr(j){return Array.isArray(j)?j:[j]}
+(function(){
+var la=SPOTS.map(function(l){return l.a}).join(","),lo=SPOTS.map(function(l){return l.o}).join(",");
+var q="latitude="+la+"&longitude="+lo+"&timezone=Asia%2FJakarta&forecast_days=2";
+var pw=jf("https://api.open-meteo.com/v1/forecast?"+q+"&hourly=temperature_2m,relative_humidity_2m,shortwave_radiation").then(function(j){
+return arr(j).map(function(x){return{t:x.hourly.temperature_2m,h:x.hourly.relative_humidity_2m,r:x.hourly.shortwave_radiation}})}).catch(function(){return null});
+var pa=jf("https://air-quality-api.open-meteo.com/v1/air-quality?"+q+"&hourly=pm2_5").then(function(j){
+return arr(j).map(function(x){return x.hourly.pm2_5})}).catch(function(){return null});
+Promise.all([pw,pa]).then(function(r){
+if(r[0]&&r[0].length==SPOTS.length)WX=r[0];
+if(r[1]&&r[1].length==SPOTS.length)AX=r[1];
+var s=E("src");
+if(WX&&AX){s.textContent="● Data prakiraan live: Open-Meteo (cuaca + kualitas udara)";s.className="src live"}
+else if(WX){s.textContent="Cuaca: prakiraan Open-Meteo · PM2.5: estimasi model";s.className="src live"}
+else if(AX){s.textContent="PM2.5: prakiraan Open-Meteo · Cuaca: estimasi model";s.className="src live"}
+else{s.textContent="Mode simulasi (data live tidak tersedia). Nilai adalah estimasi model."}
+if(tfail)s.textContent+=" · Tile peta diblokir; memakai peta dasar kisi (offline).";
+E("sc").disabled=!!WX;E("sc").title=WX?"Otomatis dari prakiraan cuaca":"";
+if(!WX&&!AX)E("dy").disabled=true;
+draw()})})();
+
+var nowH=+new Intl.DateTimeFormat("en-GB",{hour:"2-digit",hour12:false,timeZone:"Asia/Jakarta"}).format(new Date())%24;
+E("hr").value=Math.min(21,Math.max(4,nowH));
+setTimeout(function(){map.invalidateSize()},200);
+draw();
+</script>
+</body>
+</html>
